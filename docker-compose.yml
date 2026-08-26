@@ -1,8 +1,8 @@
 services:
 
-  # =========================================================
+  # ===========================
   # KAFKA
-  # =========================================================
+  # ===========================
   kafka:
     image: apache/kafka:3.9.0
     container_name: kafka
@@ -13,7 +13,6 @@ services:
 
     environment:
       KAFKA_NODE_ID: 1
-
       KAFKA_PROCESS_ROLES: broker,controller
 
       KAFKA_LISTENERS: >
@@ -31,24 +30,20 @@ services:
         CONTROLLER:PLAINTEXT
 
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
     networks:
       - space-network
 
 
-  # =========================================================
+  # ===========================
   # HDFS NAMENODE
-  # =========================================================
+  # ===========================
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: namenode
@@ -60,17 +55,22 @@ services:
 
     environment:
       CLUSTER_NAME: space-datalake
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+
+      HDFS_CONF_dfs_client_use_datanode_hostname: "true"
 
     volumes:
       - namenode-data:/hadoop/dfs/name
+      - ./data:/data
+      - ./spark:/spark
 
     networks:
       - space-network
 
 
-  # =========================================================
+  # ===========================
   # HDFS DATANODE
-  # =========================================================
+  # ===========================
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode
@@ -78,9 +78,16 @@ services:
 
     ports:
       - "9864:9864"
+      - "9866:9866"
 
     environment:
       SERVICE_PRECONDITION: "namenode:9870"
+
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+
+      HDFS_CONF_dfs_datanode_use_datanode_hostname: "true"
+      HDFS_CONF_dfs_client_use_datanode_hostname: "true"
+      HDFS_CONF_dfs_datanode_hostname: datanode
 
     volumes:
       - datanode-data:/hadoop/dfs/data
@@ -92,18 +99,18 @@ services:
       - space-network
 
 
-  # =========================================================
+  # ===========================
   # SPARK MASTER
-  # =========================================================
+  # ===========================
   spark-master:
     image: bitnamilegacy/spark:3.5
     container_name: spark-master
     hostname: spark-master
 
     environment:
-      - SPARK_MODE=master
-      - SPARK_MASTER_HOST=spark-master
-      - SPARK_MASTER_PORT=7077
+      SPARK_MODE: master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
 
     ports:
       - "7077:7077"
@@ -121,19 +128,19 @@ services:
       - space-network
 
 
-  # =========================================================
+  # ===========================
   # SPARK WORKER
-  # =========================================================
+  # ===========================
   spark-worker:
     image: bitnamilegacy/spark:3.5
     container_name: spark-worker
     hostname: spark-worker
 
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=2G
-      - SPARK_WORKER_CORES=2
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 2G
+      SPARK_WORKER_CORES: 2
 
     depends_on:
       - spark-master
@@ -146,9 +153,9 @@ services:
       - space-network
 
 
-  # =========================================================
+  # ===========================
   # AIRFLOW
-  # =========================================================
+  # ===========================
   airflow:
     image: apache/airflow:2.10.5
     container_name: airflow
@@ -178,17 +185,17 @@ services:
       - space-network
 
 
-# =========================================================
+# ===========================
 # NETWORK
-# =========================================================
+# ===========================
 networks:
   space-network:
     driver: bridge
 
 
-# =========================================================
+# ===========================
 # VOLUMES
-# =========================================================
+# ===========================
 volumes:
   namenode-data:
   datanode-data:
