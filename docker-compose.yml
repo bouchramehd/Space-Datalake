@@ -172,8 +172,8 @@ services:
 
       HADOOP_USER_NAME: root
 
-      # Installe le SDK Docker Python dans Airflow
-      _PIP_ADDITIONAL_REQUIREMENTS: "docker"
+      # Docker SDK already installed
+      _PIP_ADDITIONAL_REQUIREMENTS: ""
 
     volumes:
       - ./airflow/dags:/opt/airflow/dags
@@ -181,7 +181,7 @@ services:
       - ./scripts:/opt/airflow/scripts
       - ./data:/opt/airflow/data
 
-      # Permet à Airflow de piloter les conteneurs Docker
+      # Allow Airflow to control Docker containers
       - /var/run/docker.sock:/var/run/docker.sock
 
     depends_on:
