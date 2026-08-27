@@ -1,4 +1,5 @@
 import streamlit as st
+import plotly.express as px
 
 from utils.hdfs import (
     read_gaia_global,
@@ -8,8 +9,12 @@ from utils.hdfs import (
 )
 
 
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
 st.set_page_config(
-    page_title="Gaia DR3",
+    page_title="Gaia DR3 Explorer",
     page_icon="⭐",
     layout="wide",
 )
@@ -18,61 +23,86 @@ st.title("⭐ Gaia DR3 Explorer")
 
 st.markdown(
     """
-    Analyse des données **Gaia DR3** présentes dans la couche Gold.
+    Analyse interactive des données **Gaia DR3** présentes
+    dans la couche **Gold** du Data Lake.
     """
 )
+
+st.divider()
+
 
 # ============================================================
 # GLOBAL KPIs
 # ============================================================
 
+st.header("📊 Global KPIs")
+
 try:
 
     global_df = read_gaia_global()
-
     row = global_df.first()
 
-    st.subheader("📊 Global KPIs")
+    if row is None:
+        st.warning("Aucune donnée KPI Gaia disponible.")
+    else:
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5 = st.columns(5)
 
-    with col1:
-        st.metric(
-            "⭐ Total Stars",
-            f"{row['total_stars']:,}"
-        )
+        with col1:
+            total_stars = row["total_stars"]
 
-    with col2:
-        st.metric(
-            "📐 Avg Parallax",
-            f"{row['avg_parallax']:.2f}"
-            if row["avg_parallax"] is not None
-            else "N/A"
-        )
+            st.metric(
+                label="⭐ Total Stars",
+                value=f"{total_stars:,}" if total_stars is not None else "N/A",
+            )
 
-    with col3:
-        st.metric(
-            "💡 Avg Magnitude",
-            f"{row['avg_g_magnitude']:.2f}"
-            if row["avg_g_magnitude"] is not None
-            else "N/A"
-        )
+        with col2:
+            avg_parallax = row["avg_parallax"]
 
-    with col4:
-        st.metric(
-            "🌡️ Avg Temperature",
-            f"{row['avg_temperature']:.0f} K"
-            if row["avg_temperature"] is not None
-            else "N/A"
-        )
+            st.metric(
+                label="📐 Avg Parallax",
+                value=(
+                    f"{avg_parallax:.2f} mas"
+                    if avg_parallax is not None
+                    else "N/A"
+                ),
+            )
 
-    with col5:
-        st.metric(
-            "📏 Avg Distance",
-            f"{row['avg_distance']:.2f} pc"
-            if row["avg_distance"] is not None
-            else "N/A"
-        )
+        with col3:
+            avg_magnitude = row["avg_g_magnitude"]
+
+            st.metric(
+                label="💡 Avg Magnitude",
+                value=(
+                    f"{avg_magnitude:.2f}"
+                    if avg_magnitude is not None
+                    else "N/A"
+                ),
+            )
+
+        with col4:
+            avg_temperature = row["avg_temperature"]
+
+            st.metric(
+                label="🌡️ Avg Temperature",
+                value=(
+                    f"{avg_temperature:,.0f} K"
+                    if avg_temperature is not None
+                    else "N/A"
+                ),
+            )
+
+        with col5:
+            avg_distance = row["avg_distance"]
+
+            st.metric(
+                label="📏 Avg Distance",
+                value=(
+                    f"{avg_distance:,.2f} pc"
+                    if avg_distance is not None
+                    else "N/A"
+                ),
+            )
 
 except Exception as e:
 
@@ -87,24 +117,62 @@ st.divider()
 # TEMPERATURE
 # ============================================================
 
-st.subheader("🌡️ Stars by Temperature")
+st.header("🌡️ Stars by Temperature")
 
 try:
 
     temperature_df = read_gaia_temperature()
+    temperature_pdf = temperature_df.toPandas()
 
-    st.dataframe(
-        temperature_df.toPandas(),
-        use_container_width=True,
-    )
+    if temperature_pdf.empty:
 
-    chart_df = temperature_df.toPandas()
+        st.warning("Aucune donnée de température disponible.")
 
-    if not chart_df.empty:
+    else:
 
-        st.bar_chart(
-            chart_df.set_index("temperature_band")["star_count"]
-        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+
+            fig = px.bar(
+                temperature_pdf,
+                x="temperature_band",
+                y="star_count",
+                title="Distribution des étoiles par température",
+                labels={
+                    "temperature_band": "Temperature Band",
+                    "star_count": "Number of Stars",
+                },
+                text="star_count",
+            )
+
+            fig.update_traces(
+                texttemplate="%{text:,}",
+                textposition="outside",
+            )
+
+            fig.update_layout(
+                height=450,
+                xaxis_title="Temperature Band",
+                yaxis_title="Number of Stars",
+                showlegend=False,
+                margin=dict(l=40, r=20, t=70, b=40),
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+            )
+
+        with col2:
+
+            st.subheader("📋 Data")
+
+            st.dataframe(
+                temperature_pdf,
+                use_container_width=True,
+                hide_index=True,
+            )
 
 except Exception as e:
 
@@ -119,24 +187,62 @@ st.divider()
 # MAGNITUDE
 # ============================================================
 
-st.subheader("💡 Stars by Magnitude")
+st.header("💡 Stars by Magnitude")
 
 try:
 
     magnitude_df = read_gaia_magnitude()
+    magnitude_pdf = magnitude_df.toPandas()
 
-    st.dataframe(
-        magnitude_df.toPandas(),
-        use_container_width=True,
-    )
+    if magnitude_pdf.empty:
 
-    chart_df = magnitude_df.toPandas()
+        st.warning("Aucune donnée de magnitude disponible.")
 
-    if not chart_df.empty:
+    else:
 
-        st.bar_chart(
-            chart_df.set_index("magnitude_band")["star_count"]
-        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+
+            fig = px.bar(
+                magnitude_pdf,
+                x="magnitude_band",
+                y="star_count",
+                title="Distribution des étoiles par magnitude",
+                labels={
+                    "magnitude_band": "Magnitude Band",
+                    "star_count": "Number of Stars",
+                },
+                text="star_count",
+            )
+
+            fig.update_traces(
+                texttemplate="%{text:,}",
+                textposition="outside",
+            )
+
+            fig.update_layout(
+                height=450,
+                xaxis_title="Magnitude Band",
+                yaxis_title="Number of Stars",
+                showlegend=False,
+                margin=dict(l=40, r=20, t=70, b=40),
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+            )
+
+        with col2:
+
+            st.subheader("📋 Data")
+
+            st.dataframe(
+                magnitude_pdf,
+                use_container_width=True,
+                hide_index=True,
+            )
 
 except Exception as e:
 
@@ -151,26 +257,76 @@ st.divider()
 # DISTANCE
 # ============================================================
 
-st.subheader("📏 Stars by Distance")
+st.header("📏 Stars by Distance")
 
 try:
 
     distance_df = read_gaia_distance()
+    distance_pdf = distance_df.toPandas()
 
-    st.dataframe(
-        distance_df.toPandas(),
-        use_container_width=True,
-    )
+    if distance_pdf.empty:
 
-    chart_df = distance_df.toPandas()
+        st.warning("Aucune donnée de distance disponible.")
 
-    if not chart_df.empty:
+    else:
 
-        st.bar_chart(
-            chart_df.set_index("distance_band_pc")["star_count"]
-        )
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+
+            fig = px.bar(
+                distance_pdf,
+                x="distance_band_pc",
+                y="star_count",
+                title="Distribution des étoiles par distance",
+                labels={
+                    "distance_band_pc": "Distance Band",
+                    "star_count": "Number of Stars",
+                },
+                text="star_count",
+            )
+
+            fig.update_traces(
+                texttemplate="%{text:,}",
+                textposition="outside",
+            )
+
+            fig.update_layout(
+                height=450,
+                xaxis_title="Distance Band (pc)",
+                yaxis_title="Number of Stars",
+                showlegend=False,
+                margin=dict(l=40, r=20, t=70, b=40),
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+            )
+
+        with col2:
+
+            st.subheader("📋 Data")
+
+            st.dataframe(
+                distance_pdf,
+                use_container_width=True,
+                hide_index=True,
+            )
 
 except Exception as e:
 
     st.error("Impossible de charger les données de distance.")
     st.exception(e)
+
+
+st.divider()
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.caption(
+    "⭐ Gaia DR3 Explorer — Space Data Lake / Gold Layer"
+)
