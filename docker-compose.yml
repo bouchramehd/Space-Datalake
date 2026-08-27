@@ -169,7 +169,6 @@ services:
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-
       HADOOP_USER_NAME: root
 
       # Installe le SDK Docker Python dans Airflow
@@ -187,6 +186,43 @@ services:
     depends_on:
       - kafka
       - namenode
+      - spark-master
+
+    networks:
+      - space-network
+
+
+  # ===========================
+  # STREAMLIT APPLICATION
+  # ===========================
+  streamlit:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+
+    container_name: streamlit
+    hostname: streamlit
+
+    user: "0:0"
+
+    ports:
+      - "8501:8501"
+
+    environment:
+      USER: root
+      HOME: /root
+      HADOOP_USER_NAME: root
+
+      JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
+      PATH: /usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/local/bin:/usr/bin:/bin
+
+    volumes:
+      - ./app:/app
+      - ./spark:/opt/spark-apps
+
+    depends_on:
+      - namenode
+      - datanode
       - spark-master
 
     networks:
