@@ -1,11 +1,4 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    StructType,
-    StructField,
-    LongType,
-    DoubleType,
-    StringType
-)
 from pyspark.sql.functions import col, current_timestamp
 
 spark = (
@@ -23,36 +16,41 @@ print("=" * 60)
 print("GAIA BRONZE -> SILVER")
 print("=" * 60)
 
-# Minimal schema for the columns we need
-schema = StructType([
-    StructField("source_id", LongType(), True),
-    StructField("ra", DoubleType(), True),
-    StructField("dec", DoubleType(), True),
-    StructField("parallax", DoubleType(), True),
-    StructField("pmra", DoubleType(), True),
-    StructField("pmdec", DoubleType(), True),
-    StructField("phot_g_mean_mag", DoubleType(), True),
-    StructField("phot_bp_mean_mag", DoubleType(), True),
-    StructField("phot_rp_mean_mag", DoubleType(), True),
-    StructField("radial_velocity", DoubleType(), True),
-])
-
-print("Reading Gaia Bronze...")
-
+# Read Gaia ECSV
 df = (
     spark.read
     .option("header", "true")
-    .schema(schema)
+    .option("comment", "#")
+    .option("inferSchema", "false")
     .csv(BRONZE_PATH)
 )
 
 print("Bronze loaded.")
 
-# Keep only valid essential rows
-df = df.dropna(subset=["source_id", "ra", "dec"])
+# Select useful columns and cast types
+df = df.select(
+    col("source_id").cast("long").alias("source_id"),
+    col("designation"),
+    col("ra").cast("double").alias("ra"),
+    col("dec").cast("double").alias("dec"),
+    col("parallax").cast("double").alias("parallax"),
+    col("pm").cast("double").alias("pm"),
+    col("pmra").cast("double").alias("pmra"),
+    col("pmdec").cast("double").alias("pmdec"),
+    col("phot_g_mean_mag").cast("double").alias("phot_g_mean_mag"),
+    col("phot_bp_mean_mag").cast("double").alias("phot_bp_mean_mag"),
+    col("phot_rp_mean_mag").cast("double").alias("phot_rp_mean_mag"),
+    col("bp_rp").cast("double").alias("bp_rp"),
+    col("radial_velocity").cast("double").alias("radial_velocity"),
+    col("ruwe").cast("double").alias("ruwe"),
+    col("duplicated_source"),
+    col("teff_gspphot").cast("double").alias("teff_gspphot"),
+    col("logg_gspphot").cast("double").alias("logg_gspphot"),
+    col("distance_gspphot").cast("double").alias("distance_gspphot")
+)
 
-# Remove duplicate stars
-df = df.dropDuplicates(["source_id"])
+# Essential values only
+df = df.dropna(subset=["source_id", "ra", "dec"])
 
 # Validate coordinates
 df = df.filter(
@@ -62,7 +60,10 @@ df = df.filter(
     (col("dec") <= 90)
 )
 
-# Processing timestamp
+# Remove duplicated source IDs
+df = df.dropDuplicates(["source_id"])
+
+# Add processing timestamp
 df = df.withColumn(
     "silver_processed_at",
     current_timestamp()
@@ -81,7 +82,7 @@ print("Writing Silver Parquet...")
 
 print("=" * 60)
 print("GAIA SILVER COMPLETE")
-print(SILVER_PATH)
+print(f"Location: {SILVER_PATH}")
 print("=" * 60)
 
 spark.stop()
