@@ -45,12 +45,8 @@ services:
 
     environment:
       CLUSTER_NAME: space-datalake
-
       CORE_CONF_fs_defaultFS: hdfs://namenode:9000
-
       HDFS_CONF_dfs_client_use_datanode_hostname: "true"
-
-      # Disable HDFS permission checks for local course environment
       HDFS_CONF_dfs_permissions_enabled: "false"
 
     volumes:
@@ -76,14 +72,10 @@ services:
 
     environment:
       SERVICE_PRECONDITION: "namenode:9870"
-
       CORE_CONF_fs_defaultFS: hdfs://namenode:9000
-
       HDFS_CONF_dfs_datanode_use_datanode_hostname: "true"
       HDFS_CONF_dfs_client_use_datanode_hostname: "true"
       HDFS_CONF_dfs_datanode_hostname: datanode
-
-      # Same HDFS permission setting
       HDFS_CONF_dfs_permissions_enabled: "false"
 
     volumes:
@@ -103,7 +95,6 @@ services:
     image: bitnamilegacy/spark:3.5
     container_name: spark-master
     hostname: spark-master
-
     user: "0:0"
 
     environment:
@@ -138,7 +129,6 @@ services:
     image: bitnamilegacy/spark:3.5
     container_name: spark-worker
     hostname: spark-worker
-
     user: "0:0"
 
     environment:
@@ -182,11 +172,17 @@ services:
 
       HADOOP_USER_NAME: root
 
+      # Installe le SDK Docker Python dans Airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: "docker"
+
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./spark:/opt/airflow/spark
       - ./scripts:/opt/airflow/scripts
       - ./data:/opt/airflow/data
+
+      # Permet à Airflow de piloter les conteneurs Docker
+      - /var/run/docker.sock:/var/run/docker.sock
 
     depends_on:
       - kafka
